@@ -6,6 +6,7 @@ import ConfigParser
 import httplib2
 import json
 import webbrowser
+import os
 
 
 class Pocket:
@@ -13,7 +14,9 @@ class Pocket:
     def __init__(self):
         # Load config items
         config = ConfigParser.ConfigParser()
-        config.read('config.ini')
+        __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        config.read(os.path.join(__location__, 'config.ini'))
+
         if config.has_option('POCKET_API', 'username') is False:
             self.access_token = None
             self.username = None
@@ -46,7 +49,7 @@ class Pocket:
         if tags is not None:
             parameters['tags'] = tags
 
-        status, statustxt = self._query(self.addurl, parameters)
+        status, statustxt = self._query(self.add_item_url, parameters)
         return (int(status), statustxt)
 
     def auth(self):
@@ -75,7 +78,7 @@ class Pocket:
         while accepted.lower() == 'n':
             accepted = raw_input('Have you authorized me? (y/n) ')
         # Obtain access token
-        body = "consumer_key=%s&code=%s" % (self.consumer_key, self.request_token)
+        body = "consumer_key=%s&code=%s" % (self.consumer_key, request_token[1])
         h = httplib2.Http()
         headers = {}
         headers['Content-Type'] = 'application/x-www-form-urlencoded'
@@ -90,10 +93,11 @@ class Pocket:
         print "Username: %s" % username[1]
 
         config = ConfigParser.ConfigParser()
-        config.add_section('POCKET_API')
+        __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+        config.read(os.path.join(__location__, 'config.ini'))
         config.set('POCKET_API', 'username', username[1])
         config.set('POCKET_API', 'access_token', access_token[1])
-        with open('config.ini', 'w') as configfile:
+        with open(os.path.join(__location__, 'config.ini'), 'w') as configfile:
             config.write(configfile)
 
     def _query(self, url=None, params=""):
@@ -110,6 +114,12 @@ class Pocket:
             raise Exception("No URL was provided.")
         headers = {}
         headers['Content-Type'] = 'application/json'
+
+        if not isinstance(params, dict):
+            params = {}
+        params['consumer_key'] = self.consumer_key
+        params['access_token'] = self.access_token
+
         h = httplib2.Http()
         resp, content = h.request(self.add_item_url, method="POST", body=json.dumps(params), headers=headers)
         status = resp['status']
